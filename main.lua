@@ -17,7 +17,7 @@ currentTime = 0
 --------------------------------------------------------------------------------
 
 enemy = {}
-enemy.blood = 3
+enemy.health = 3
 
 enemy.hitpoints =
 {
@@ -63,6 +63,8 @@ function attack (point, type, damage, pen, depth)
     totalDamage = totalDamage * damageMulti
 
     attackMessage = attackMessage .. "Total Damage " .. totalDamage
+
+    addMessage (attackMessage)
 
     return attackMessage
 end
@@ -122,9 +124,9 @@ end
 
 function love.keyreleased(key)
    if key == '1' then
-     addMessage ( attack ( "head" , "thrust", 1, 2, 2) )
+    attack ( "head" , "thrust", 1, 2, 2)
   elseif key == '2' then
-     addMessage ( attack ( "chest" , "pommel", 1, 0.5, 2) )
+     attack ( "chest" , "pommel", 1, 0.5, 2)
   elseif key == '`' then
       debug.debug()
    end
