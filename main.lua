@@ -5,7 +5,11 @@ local logText = "loginit"
 
 local messagesText
 local logMsgCounter = 0
-local myfont = love.graphics.newFont(14) -- the number denotes the font size
+--local myfont = love.graphics.newFont(14) -- the number denotes the font size
+myfont = love.graphics.newImageFont("imagefont.png",
+    " abcdefghijklmnopqrstuvwxyz" ..
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0" ..
+    "123456789.,!?-+/():;%&`'*#=[]\"")
 
 start = love.timer.getTime()
 currentTime = 0
@@ -13,7 +17,7 @@ currentTime = 0
 --------------------------------------------------------------------------------
 
 enemy = {}
-enemy.health = 3
+enemy.blood = 3
 
 enemy.hitpoints =
 {
@@ -24,6 +28,10 @@ enemy.hitpoints =
 
 
 --------------------------------------------------------------------------------
+
+
+
+
 
 function attack (point, type, damage, pen, depth)
     local armorPend = false
@@ -60,6 +68,18 @@ function attack (point, type, damage, pen, depth)
 end
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -------------------------------
 
 
@@ -88,7 +108,6 @@ end
 
 --------------------------------------------------------------------------------
 function love.load()
-    local myfont = love.graphics.newFont(14)
     messagesText = love.graphics.newText(myfont, "default")
 
 end
