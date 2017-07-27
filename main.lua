@@ -1,4 +1,7 @@
 
+local tween = require 'tween'
+
+local ignoreAllInputs = false
 
 local attackMessage = "init"
 local logText = "loginit"
@@ -14,8 +17,17 @@ start = love.timer.getTime()
 currentTime = 0
 
 --------------------------------------------------------------------------------
+-- it belongs in a library!
+
+function round(num, numDecimalPlaces)
+  local mult = 10^(numDecimalPlaces or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
+
+--------------------------------------------------------------------------------
 
 enemy = {}
+
 
 enemy.bloodMax = 5
 enemy.bloodCurrent = 5
@@ -31,26 +43,61 @@ enemy.stunRemaining = 0
 
 enemy.hitpoints =
 {
-    ["carot"]   =   {   bleedRate = 0.167,  stun = 0,   wounded = false},
-    ["subcl"]   =   {   bleedRate = 0.200,  stun = 0,   wounded = false},
-    ["brach"]   =   {   bleedRate = 0.023,  stun = 0,   wounded = false},
-    ["kidneyR"]  =   {   bleedRate = 0.010,  stun = 7,   wounded = false},
-    ["kidneyL"]  =   {   bleedRate = 0.010,  stun = 7,   wounded = false},
-    ["stomach"] =   {   bleedRate = 0.030,  stun = 5,   wounded = false},
+    ["carot"]   =   {   bleedRate = 0.167,  stun = 0,   wounded = false,    relPosX = 60,   relPosY = -10 },
+    ["subcl"]   =   {   bleedRate = 0.200,  stun = 0,   wounded = false,    relPosX = 80,   relPosY = 7 },
+    ["brach"]   =   {   bleedRate = 0.023,  stun = 0,   wounded = false,    relPosX = 110,  relPosY = 30 },
+    ["kidneyR"] =   {   bleedRate = 0.010,  stun = 8,   wounded = false,    relPosX = 75,   relPosY = 140 },
+    ["kidneyL"] =   {   bleedRate = 0.010,  stun = 7,   wounded = false,    relPosX = 45,   relPosY = 140 },
+    ["stomach"] =   {   bleedRate = 0.030,  stun = 5,   wounded = false,    relPosX = 60,   relPosY = 120 },
 }
 
 
+enemy.originX = 500
+enemy.originY = 200
+
+enemy.draw = function ()
+    love.graphics.setColor(255, 255, 255)
+    love.graphics.rectangle("fill", enemy.originX, enemy.originY, 120, 180, 25)
+    love.graphics.ellipse("fill", enemy.originX + 60, enemy.originY - 60, 30, 40, 100)
+
+    for i,v in pairs{"carot", "subcl", "brach", "kidneyR", "kidneyL", "stomach"} do
+        if enemy.hitpoints[v].wounded then
+            love.graphics.setColor(255, 0, 255)
+        else
+            love.graphics.setColor(0, 0, 0)
+        end
+        love.graphics.circle( "fill", enemy.originX + enemy.hitpoints[v].relPosX, enemy.originY + enemy.hitpoints[v].relPosY, 5 )
+    end
+
+    --[[for i,v in ipairs(enemy.hitpoints) do
+
+        local px = enemy.originX + enemy.hitpoints[v].relPosX
+        local py = enemy.originY + enemy.hitpoints[v].relPosY
+
+        if enemy.hitpoints[v].wounded then
+            love.graphics.setColor(255, 0, 255)
+        else
+            love.graphics.setColor(0, 0, 0)
+        end
+
+        love.graphics.circle( "fill", px, py, 5 )
+    end
+    --]]
+end
+
 
 enemy.addWound = function ( hitpoint )
-    if not enemy.hitpoints[hitpoint].wounded or enemy.dead then
+    if not enemy.hitpoints[hitpoint].wounded and not enemy.dead then
         enemy.bleedRate = enemy.bleedRate + enemy.hitpoints[hitpoint].bleedRate
-        enemy.stunRemaining = enemy.stunRemaining + enemy.hitpoints[hitpoint].stun
+        if enemy.conscious then
+            enemy.stunRemaining = enemy.stunRemaining + enemy.hitpoints[hitpoint].stun
+        end
 
         enemy.hitpoints[hitpoint].wounded = true
 
-        addFeedback ("Vital stab to " .. hitpoint .. ", bleeding " .. enemy.bleedRate .. "L/s." .. " Stunned " .. math.ceil(enemy.stunRemaining) .. " seconds.")
+        addFeedback ("Vital stab to " .. hitpoint .. ", bleeding " .. enemy.bleedRate .. "L/s." .. " "..round(enemy.hitpoints[hitpoint].stun, 1) .. "s stun added.")
     else
-        addFeedback ("Vital stab to" .. hitpoint .. " to little effect.")
+        addFeedback ("Vital stab to " .. hitpoint .. " has little effect.")
     end
 end
 
@@ -59,12 +106,14 @@ enemy.tick = function (dt)
     if enemy.dead then
         if enemy.bloodCurrent == 0 then
             return
-        elseif enemy.bloodCurrent < 0.1 then
+        elseif enemy.bloodCurrent < 0.01 then
             enemy.bleedRate = 0
             enemy.bloodCurrent = 0
             addFeedback ("Enemy has stopped bleeding.")
         elseif enemy.bloodCurrent < 0.6 then
             enemy.bleedRate = 0.01
+        elseif enemy.bloodCurrent < 1.6 then
+            enemy.bleedRate = 0.03
         end
 
     end
@@ -81,7 +130,7 @@ enemy.tick = function (dt)
         if enemy.stunRemaining == 0 then
             enemy.stunned = false
             --leave stun
-            addFeedback ("Enemy is no longer stunned.")
+            if enemy.conscious then addFeedback ("Enemy is no longer stunned.") end
         else
             enemy.stunned = true
             --enter stun
@@ -120,58 +169,89 @@ end -- end tick
 
 
 --------------------------------------------------------------------------------
-
-character = {}
-    character.new = function()
-    end
+local attackAnimActive = {}
 
 
+local attackAnim = {}
 
-function attack (point, type, damage, pen, depth)
-    local armorPend = false
-    local vitalHit = false
-    local damageMulti = 1
-    local totalDamage = 0
+attackAnim.new = function (hitpoint, startup, recovery)
+    local self = {}
+    self.name = "defaultAttackAnimation"
+    self.targetPoint = hitpoint
+    self.startupTime = startup
+    self.recoveryTime = recovery
+    self.animTimeElapsed = 0
+    self.starting = true
+    self.recovered = false
 
-    attackMessage = point .. ", " .. type .. ", " .. damage .. "dmg, " .. pen .. "pen, " .. depth .. "in.        "
+    self.tick = function (buttonreleased, dt)
+        self.animTimeElapsed = self.animTimeElapsed + dt
 
+        if self.recovered then return self.recovered end
 
-    if pen > enemy.hitpoints[point].armor then
+        if self.starting then
+            self.startupTime = self.startupTime - dt
+            if self.startupTime <= 0 then
+                self.starting = false
+                enemy.addWound ( hitpoint )
+            end
+        else
+            
+            self.recoveryTime = self.recoveryTime - dt
+            if self.recoveryTime <= 0 then
+                self.recovered = true
 
-        armorPend = true
-        attackMessage = attackMessage .. "Penetrated. "
+                addMessage ("Animation done ("..round(self.animTimeElapsed, 1).."s)")
 
-        totalDamage = damage
-
-        if depth > enemy.hitpoints[point].vitalDepth then
-
-            vitalHit = true
-            attackMessage = attackMessage .. "Vital hit. "
-
-            damageMulti = 2
-
+            end
         end
 
+        return self.recovered
     end
 
-    totalDamage = totalDamage * damageMulti
-
-    attackMessage = attackMessage .. "Total Damage " .. totalDamage
-
-    addFeedback (attackMessage)
-
-    return attackMessage
+    return self
 end
 
 
 
---------------------------------------------
+
+    --------------------------------------------------------------------------------
+
+function handleInput ( dirButton )
+    if ignoreAllInputs then return end
+
+    validCmds =
+        {
+            ["1x"]   =   "kidneyL",
+            ["2x"]   =   "kidneyR",
+            ["6x"]   =   "brach",
+            ["8x"]   =   "carot",
+            ["9x"]   =   "subcl",
+        }
+
+    if validCmds[dirButton] ~= nil then
+        doAttackAnimation ( validCmds[dirButton] )
+        --addMessage (validCmds[dirButton])
+    end
+end
+
+
+
+function doAttackAnimation (hitpoint)
+
+    attackAnimActive[1] = attackAnim.new(hitpoint, 1, 0.5)
+    --ignoreAllInputs = false
+end
+
+
+
+--------------------------------------------------------------------------------
 
 
 function addMessage (string)
     logText = logText .. "\n" ..  string
     logMsgCounter = logMsgCounter + 1
-    if logMsgCounter > 20 then
+    if logMsgCounter > 16 then
         --messagesText:clear()
         logMsgCounter = 0
         logText = string
@@ -183,11 +263,11 @@ end
 
 function addFeedback (string)
     feedbackMsgCounter = feedbackMsgCounter + 1
-    if feedbackMsgCounter > 10 then
+    if feedbackMsgCounter > 14 then
         feedbackMsgCounter = 0
-        feedbackLog = math.floor(currentTime) ..": ".. string
+        feedbackLog = round(currentTime, 1) ..": ".. string
     else
-        feedbackLog = feedbackLog .. "\n" ..  math.floor(currentTime) ..": ".. string
+        feedbackLog = feedbackLog .. "\n" ..  round(currentTime, 1) ..": ".. string
     end
 
     feedbackText:set ( feedbackLog )
@@ -218,8 +298,22 @@ end
 
 --------------------------------------------------------------------------------
 
+local connectedJoysticks = love.joystick.getJoysticks()
+local activeJoystick = connectedJoysticks[1]
+local axisdirX = 0
+local axisdirY = 0
 
+local joyDirThreshold = 0.5
+local joyR = false
+local joyL = false
+local joyU = false
+local joyD = false
 
+local joystickInput = 5
+local joystickInputHistory = ""
+local joyN = false
+
+----------------------------------------
 
 function love.keyreleased(key)
     if key == '1' then
@@ -255,6 +349,10 @@ function love.gamepadpressed(joystick, button)
     lastbutton = button
     currentbutton = button
 
+    addMessage(joystickInput .. button)
+
+    handleInput (joystickInput .. button)
+
     --table.insert (currentbuttons, button)
 
 
@@ -271,26 +369,27 @@ end
 ------------------------------------------------------------------------ UPDATE
 --------------------------------------------------------------------------------
 
-local connectedJoysticks = love.joystick.getJoysticks()
-local activeJoystick = connectedJoysticks[1]
-local axisdirX = 0
-local axisdirY = 0
 
-local joyDirThreshold = 0.5
-local joyR = false
-local joyL = false
-local joyU = false
-local joyD = false
-
-local joystickInput = 5
-local joystickInputHistory = ""
-local joyN = false
-
+local attackAnimDone = false
 
 function love.update(dt)
     currentTime = love.timer.getTime() - start
 
 
+--------------------------------------------
+    enemy.tick (dt)
+
+    if attackAnimActive[1] ~= nil then
+
+        ignoreAllInputs = true
+        attackAnimDone = attackAnimActive[1].tick(dt)
+
+        if attackAnimDone then
+            attackAnimActive[1] = nil
+        end
+    else
+        ignoreAllInputs = false
+    end
 --------------------------------------------
 
 
@@ -346,8 +445,9 @@ function love.update(dt)
         end
 
 
-        if (joyN and joystickPrevInput ~= 5) then
+        if joyN and joystickPrevInput ~= 5 then
             addMessage(joystickInputHistory)
+
             joystickInputHistory = ""
         elseif not joyN and joystickInput ~= joystickPrevInput then
             joystickInputHistory = joystickInputHistory .. joystickInput
@@ -356,22 +456,31 @@ function love.update(dt)
     end
 
 
-----------------------------------------------
 
+
+
+
+
+
+
+
+----------------------------------------------
 
 inputText:set ( "button: "..currentbutton.."\njoy in: "..joystickInput )
 
-enemyStatusText:set ( "Blood: ".. enemy.bloodCurrent .. "L\nBleed: " .. enemy.bleedRate .. "L/s\nStunT: " .. enemy.stunRemaining )
+enemyStatusText:set ( "Blood: ".. enemy.bloodCurrent .. " L\nBleed: " .. enemy.bleedRate .. " L/s\nStunT: " .. enemy.stunRemaining )
 
-timeElapsedText:set ( "Time: "..math.floor(currentTime).." seconds" )
+timeElapsedText:set ( "Time:  "..round(currentTime, 1))
 
 -----------------------------------------------
 
-
-    enemy.tick (dt)
-
-
 end -- END UPDATE
+
+
+
+
+
+
 
 --------------------------------------------------------------------------------
 -------------------------------------------------------------------------- DRAW
@@ -380,13 +489,26 @@ function love.draw()
     --love.graphics.print("button: "..currentbutton.."\njoy in: "..joystickInput.."\nlast button: "..lastbutton.."\nAxis X: "..axisdirX.."\nAxis Y: "..axisdirY, 0, 400)
     --love.graphics.print("button: "..currentbutton.."\njoy in: "..joystickInput, 0, 400)
 
+    love.graphics.setColor(200 - (1 - enemy.bloodCurrent / 5) * 100, 30, 0)
+    love.graphics.ellipse("fill", 500, 250,  (1 - enemy.bloodCurrent / 5) * 400, (1 - enemy.bloodCurrent / 5) * 400, 100)
 
+    enemy.draw ()
+
+    if ignoreAllInputs then
+        love.graphics.setColor( 255 , 255, 0 )
+        love.graphics.ellipse("fill", 175, 280, 50, 50, 4)
+    end
+
+
+    love.graphics.setColor(255, 255, 255)
     love.graphics.draw(messagesText, 0, 0 )
-    love.graphics.draw(inputText, 0, 380 )
-    love.graphics.draw(feedbackText, 0, 430 )
+    love.graphics.draw(inputText, 0, 300 )
+    love.graphics.draw(feedbackText, 0, 345 )
 
-    love.graphics.draw(timeElapsedText, 250, 300 )
-    love.graphics.draw(enemyStatusText, 250, 330 )
+    love.graphics.draw(timeElapsedText, 250, 250 )
+    love.graphics.draw(enemyStatusText, 250, 270 )
+
+
 
 
 end
