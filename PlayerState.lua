@@ -7,81 +7,19 @@ IdleState.new = function ()
 
     self.enter = function ()
         --do stuff when entering this state
+        addMessage ("Entered state: IDLE")
     end
 
-    self.handleInput = function (input)
+    self.handleInput = function (player, input)
         if input == "press_grab" then
-            -- do grab
-            return GrabState.new()
-        elseif input == "press_drawknife" then
-            return KnifeFwdState.new()
+            return GrabState
         end
 
         return nil
     end
 
     self.tick = function (dt)
-        -- idle
-    end
 
-
-    return self
-end
-
---------------------------------------------------------------------------------
-
-local KnifeFwdState = {}
-
-KnifeFwdState.new = function ()
-    local self = {}
-
-    self.enter = function ()
-        --do stuff when entering this state
-    end
-
-    self.handleInput = function (input)
-        if input == "press_switchgrip" then
-            -- do grab
-            return KnifeRevState.new()
-        else
-            --no state above
-        end
-
-        return nil
-    end
-
-    self.tick = function (dt)
-        -- idle
-    end
-
-
-    return self
-end
-
---------------------------------------------------------------------------------
-
-local KnifeRevState = {}
-
-KnifeRevState.new = function ()
-    local self = {}
-
-    self.enter = function ()
-        --do stuff when entering this state
-    end
-
-    self.handleInput = function (input)
-        if input == "press_switchgrip" then
-            -- do grab
-            return KnifeFwdState.new()
-        else
-            --no state above
-        end
-
-        return nil
-    end
-
-    self.tick = function (dt)
-        -- idle
     end
 
 
@@ -97,14 +35,14 @@ GrabState.new = function ()
 
     self.enter = function ()
         --do stuff when entering this state
+        addMessage ("Entered state: GRAB")
     end
 
     self.handleInput = function (input)
         if input == "release_grab" then
-            -- release grab to idle
-            return "pop"
+            return IdleState
         elseif input == "press_attack" then
-            return attackState.new()
+            return attackState
         end
 
         return nil
@@ -126,15 +64,13 @@ attackState.new = function ()
     local self = {}
 
     self.enter = function ()
+        addMessage ("Entered state: ATTACK")
         --do stuff when entering this state
     end
 
     self.handleInput = function (input)
         if input == "release_attack" then
-            -- release attack button to to grab
-            return "pop"
-        else
-
+            return GrabState
         end
 
         return nil
