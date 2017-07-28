@@ -196,7 +196,7 @@ attackAnim.new = function (hitpoint, startup, recovery)
                 enemy.addWound ( hitpoint )
             end
         else
-            
+
             self.recoveryTime = self.recoveryTime - dt
             if self.recoveryTime <= 0 then
                 self.recovered = true
@@ -211,6 +211,38 @@ attackAnim.new = function (hitpoint, startup, recovery)
 
     return self
 end
+
+
+--[[
+animation.tick ( dt  )
+    timeremaining
+    isdone = false
+
+    move object at distance/timeremaining * dt
+
+    timeremaining = timeremaining - dt
+
+    if timeremaining <= 0 then idone = true; return isdone end
+
+
+attack.tick
+    active anim = {}
+    anim.startup = animation.new (object, animdata )
+    anim.atkactive = animation.new (object, animdata , buttonh)
+    anim.recovery = animation.new (object, animdata )
+
+
+
+anim.new (object, animdata, button)
+    animdata.path
+    animdata.time
+
+animdata.new ( path, totaltime, cmdToExec, execTime <0-1> )
+
+
+--]]
+
+
 
 
 
