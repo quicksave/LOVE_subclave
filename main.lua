@@ -1,5 +1,12 @@
 
-local tween = require 'tween'
+--love.filesystem.setRequirePath("?.lua;?/init.lua;"..love.filesystem.getSource().."/?.lua;"..love.filesystem.getSource().."/?/init.lua")
+
+require 'tween'
+
+local didrequire = require "Player"
+
+
+local testPlayer = Player.new()
 
 local ignoreAllInputs = false
 

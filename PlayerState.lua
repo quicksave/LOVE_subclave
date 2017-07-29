@@ -1,6 +1,6 @@
 
 
-local IdleState = {}
+IdleState = {}
 
 IdleState.new = function ()
     local self = {}
@@ -12,7 +12,7 @@ IdleState.new = function ()
 
     self.handleInput = function (player, input)
         if input == "press_grab" then
-            return GrabState
+            return GrabState.new()
         end
 
         return nil
@@ -28,7 +28,7 @@ end
 
 --------------------------------------------------------------------------------
 
-local GrabState = {}
+GrabState = {}
 
 GrabState.new = function ()
     local self = {}
@@ -42,7 +42,7 @@ GrabState.new = function ()
         if input == "release_grab" then
             return IdleState
         elseif input == "press_attack" then
-            return attackState
+            return AttackState.new()
         end
 
         return nil
@@ -58,9 +58,9 @@ end
 
 --------------------------------------------------------------------------------
 
-local attackState = {}
+AttackState = {}
 
-attackState.new = function ()
+AttackState.new = function ()
     local self = {}
 
     self.enter = function ()
@@ -70,7 +70,7 @@ attackState.new = function ()
 
     self.handleInput = function (input)
         if input == "release_attack" then
-            return GrabState
+            return GrabState.new()
         end
 
         return nil

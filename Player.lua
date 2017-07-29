@@ -1,16 +1,21 @@
+--love.filesystem.setRequirePath("?.lua;?/init.lua;"..love.filesystem.getSource().."/?.lua;"..love.filesystem.getSource().."/?/init.lua")
 
-local Player = {}
+require "PlayerState"
 
-Player.new = function (state)
+Player = {}
+
+Player.new = function ()
     local self = {}
     --self.stateStack = { idleState.new() }
-    self.activeState = state
+
+    self.activeState = IdleState.new()
     self.tempState = nil
 
 
     self.handleInput = function (input)
         self.tempState = self.activeState.handleInput (input)
         if not self.tempState then -- if return is not nil
+            self.activeState = nil
             self.activeState = self.tempState
             self.activeState.enter()
         end
