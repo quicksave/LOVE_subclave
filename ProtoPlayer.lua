@@ -2,9 +2,9 @@
 
 require "PlayerState"
 
-Player = {}
+ProtoPlayer = {}
 
-Player.new = function ()
+ProtoPlayer.new = function ()
     local self = {}
     --self.stateStack = { idleState.new() }
 
@@ -13,8 +13,10 @@ Player.new = function ()
 
 
     self.handleInput = function (input)
+        --addMessage (self.activeState.name)
         self.tempState = self.activeState.handleInput (input)
-        if not self.tempState then -- if return is not nil
+        --addMessage ("return: "..self.tempState.name)
+        if self.tempState then -- if return is not nil
             self.activeState = nil
             self.activeState = self.tempState
             self.activeState.enter()
@@ -24,4 +26,6 @@ Player.new = function ()
     self.tick = function (dt)
         self.activeState.tick (dt)
     end
+
+    return self
 end
