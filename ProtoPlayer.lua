@@ -8,8 +8,17 @@ ProtoPlayer.new = function ()
     local self = {}
     --self.stateStack = { idleState.new() }
 
-    self.activeState = IdleState.new()
+    self.activeState = IdleState.new(self)
     self.tempState = nil
+
+
+    self.activeAnimation = nil
+    self.animations =
+    {
+        ["carotidStartup"] = {time = 1 },
+        ["carotidWindow"] = {time = 1 },
+        ["carotidRecovery"] = {time = 1 },
+    }
 
 
     self.handleInput = function (input)
@@ -19,7 +28,7 @@ ProtoPlayer.new = function ()
         if self.tempState then -- if return is not nil
             self.activeState = nil
             self.activeState = self.tempState
-            self.activeState.enter()
+            self.activeState.enter(self)
         end
     end
 

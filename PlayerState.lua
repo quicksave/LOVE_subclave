@@ -2,10 +2,11 @@
 
 IdleState = {}
 
-IdleState.new = function ()
+IdleState.new = function (player)
     local self = {}
 
     self.name = "idle"
+    self.player = player
 
     self.enter = function ()
         --do stuff when entering this state
@@ -14,7 +15,7 @@ IdleState.new = function ()
 
     self.handleInput = function ( input)
         if input == "pressgrab" then
-            return GrabState.new()
+            return GrabState.new(self.player)
         end
 
         return nil
@@ -32,10 +33,11 @@ end
 
 GrabState = {}
 
-GrabState.new = function ()
+GrabState.new = function (player)
     local self = {}
 
     self.name = "grab"
+    self.player = player
 
     self.enter = function ()
         --do stuff when entering this state
@@ -44,9 +46,9 @@ GrabState.new = function ()
 
     self.handleInput = function (input)
         if input == "releasegrab" then
-            return IdleState.new()
+            return IdleState.new(self.player)
         elseif input == "pressattack" then
-            return AttackState.new()
+            return AttackStartupState.new(self.player)
         end
 
         return nil
@@ -62,33 +64,43 @@ end
 
 --------------------------------------------------------------------------------
 
-AttackState = {}
+AttackStartupState = {}
 
-AttackState.new = function ()
+AttackStartupState.new = function (player)
     local self = {}
 
-    self.name = "attack"
+    self.name = "attackstartup"
+    self.player = player
+
+    self.time = 1
+    self.isDone = false
 
     self.enter = function ()
-        addMessage ("Entered state: ATTACK")
-        
+        addMessage ("Entered state: AttackStartup")
+
+
     end
     self.exit = function ()
-        addMessage ("Exit state: ATTACK")
 
     end
 
     self.handleInput = function (input)
-        if input == "releaseattack" then
-            self.exit()
-            return GrabState.new()
+        if input == "enterattackwindow" then
+            return AttackWindowState.new(self.player)
         end
 
         return nil
     end
 
     self.tick = function (dt)
-        -- attackidle
+        if self.time - dt <= 0 then
+            self.isDone = true
+
+            self.player.handleInput("enterattackwindow")
+        else
+            self.time = self.time - dt
+        end
+
     end
 
 
@@ -96,3 +108,81 @@ AttackState.new = function ()
 end
 
 --------------------------------------------------------------------------------
+
+AttackWindowState = {}
+
+AttackWindowState.new = function (player)
+    local self = {}
+
+    self.name = "attackwindow"
+    self.player = player
+
+    self.time = 1
+    self.isDone = false
+
+    self.enter = function ()
+        addMessage ("Entered state: AttackWindow")
+
+        enemy.addWound ("kidneyR")
+    end
+    self.exit = function ()
+
+    end
+
+    self.handleInput = function (input)
+        if input == "releaseattack" then
+            return AttackRecoveryState.new(self.player)
+        end
+
+        return nil
+    end
+
+    self.tick = function (dt)
+    end
+
+
+    return self
+end
+
+--------------------------------------------------------------------------------
+
+AttackRecoveryState = {}
+
+AttackRecoveryState.new = function (player)
+    local self = {}
+
+    self.name = "attackrecovery"
+    self.player = player
+
+    self.time = 0.5
+    self.isDone = false
+
+    self.enter = function ()
+        addMessage ("Entered state: AttackRecovery")
+
+
+    end
+    self.exit = function ()
+
+    end
+
+    self.handleInput = function (input)
+        if input == "exitattackrecovery" then
+            return GrabState.new(self.player)
+        end
+
+        return nil
+    end
+
+    self.tick = function (dt)
+        if self.time - dt <= 0 then
+            self.isDone = true
+            self.player.handleInput("exitattackrecovery")
+        else
+            self.time = self.time - dt
+        end
+    end
+
+
+    return self
+end

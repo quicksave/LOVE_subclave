@@ -5,6 +5,7 @@ require 'tween'
 
 require "ProtoPlayer"
 require "ProtoEnemy"
+require "ProtoKnife"
 require "attackAnim"
 require "round"
 
@@ -99,13 +100,32 @@ function handleInput ( dirButton )
         player.handleInput( validStateCmds[dirButton] )
         --addMessage( validStateCmds[dirButton] )
     end
+
+
+
+end
+
+
+
+local ProtoAnimation = {}
+
+ProtoAnimation.new = function (time)
+    local self = {}
+
+    self.blockInput = false
+    self.isDone = false
+    self.animTime = time
+
+    self.tick = function (dt)
+
+    end
+
+    return self
 end
 
 
 
 function doAttackAnimation (hitpoint)
-
-
 
     table.insert (activeAnimation, attackAnim.new(enemy, hitpoint, 1, 0.5) )
     --ignoreAllInputs = false
@@ -153,6 +173,7 @@ function love.load()
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0" ..
         "123456789.,!?-+/():;%&`'*#=[]\"")
 
+    love.graphics.setDefaultFilter("nearest", "nearest", 1)
 
     timeElapsedText = love.graphics.newText(myfont, "seconds")
     messagesText = love.graphics.newText(myfont, "messages")
@@ -165,6 +186,7 @@ function love.load()
 
     player = ProtoPlayer.new()
     enemy = ProtoEnemy.new()
+    knife = ProtoKnife.new(389,150)
 
 
 end
@@ -263,7 +285,7 @@ function love.update(dt)
         attackAnimDone = activeAnimation[1].tick(dt)
 
         if attackAnimDone then
-            activeAnimation[1] = nil
+            table.remove (activeAnimation)
         end
     else
         ignoreAllInputs = false
@@ -346,7 +368,7 @@ function love.update(dt)
 
 inputText:set ( "button: "..currentbutton.."\njoy in: "..joystickInput )
 
-enemyStatusText:set ( "Blood: ".. enemy.bloodCurrent .. " L\nBleed: " .. enemy.bleedRate .. " L/s\nStunT: " .. enemy.stunRemaining )
+enemyStatusText:set ( "Blood: ".. round(enemy.bloodCurrent,3) .. " L\nBleed: " .. enemy.bleedRate .. " L/s\nStunT: " .. enemy.stunRemaining )
 
 timeElapsedText:set ( "Time:  "..round(currentTime, 1))
 
@@ -386,6 +408,7 @@ function love.draw()
     love.graphics.draw(timeElapsedText, 250, 250 )
     love.graphics.draw(enemyStatusText, 250, 270 )
 
+    knife.draw ()
 
 
 
