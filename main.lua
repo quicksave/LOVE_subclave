@@ -6,19 +6,19 @@ require 'tween'
 require "ProtoPlayer"
 require "ProtoEnemy"
 require "ProtoKnife"
+require "ControllerInput"
+require "InputQueue"
 require "attackAnim"
-require "round"
+
+require "commonfnc"
 
 
 local ignoreAllInputs = false
 
 local attackMessage = "init"
-local logText = "loginit"
-local feedbackLog = "feedbackinit"
 
-local messagesText
-local logMsgCounter = 0
-local feedbackMsgCounter = 0
+--local messagesText
+
 --local myfont = love.graphics.newFont(14) -- the number denotes the font size
 
 local activeAnimation = {}
@@ -26,11 +26,17 @@ local activeAnimation = {}
 start = love.timer.getTime()
 currentTime = 0
 
-playerStateInput = "none"
+logText = "loginit"
+logMsgCounter = 0
+
+feedbackLog = "feedbackinit"
+feedbackMsgCounter = 0
+--playerStateInput = "none"
 
 
 --------------------------------------------------------------------------------
 
+--[[
 function handleKBInput (key, pressed)
     if pressed then
         handleKBPressed(key)
@@ -45,7 +51,6 @@ function handleKBPressed (key)
 end
 
 function handleKBReleased (key)
-    --[[
     local kbToControllerTable =
         {
             ["1"]   =   "1x",
@@ -56,7 +61,6 @@ function handleKBReleased (key)
         }
 
     handleInput ( kbToControllerTable[key] )
-    --]]
 
     if key == '7' then
         player.handleInput("press_grab")
@@ -71,11 +75,15 @@ function handleKBReleased (key)
         player.handleInput("release_grab")
     end
 end
+--]]
 
 
 
-function handleInput ( dirButton )
+function handleInput ( joydir, button )
     if ignoreAllInputs then return end
+
+    local joybutton = joydir..button
+    local dirtrbutton = joydir..button
 
     validAtkCmds =
         {
@@ -87,18 +95,20 @@ function handleInput ( dirButton )
         }
     validStateCmds =
         {
-            ["a"]   =   "pressgrab",
-            ["b"]   =   "pressattack",
-            ["x"]   =   "releaseattack",
-            ["y"]   =   "releasegrab",
+            ["LTpressed"]   =   "pressgrab",
+            ["x"]           =   "pressattack",
+            ["xreleased"]   =   "releaseattack",
+            ["LTreleased"]  =   "releasegrab",
         }
 
-    if validAtkCmds[dirButton] ~= nil then
-        doAttackAnimation ( validAtkCmds[dirButton] )
-        --addMessage (validAtkCmds[dirButton])
-    elseif validStateCmds[dirButton] ~= nil then
-        player.handleInput( validStateCmds[dirButton] )
-        --addMessage( validStateCmds[dirButton] )
+
+
+    if validAtkCmds[joybutton] ~= nil then
+        addMessage (joybutton)
+        doAttackAnimation ( validAtkCmds[joybutton] )
+    elseif validStateCmds[button] ~= nil then
+        addMessage (button)
+        player.handleInput( validStateCmds[button] )
     end
 
 
@@ -106,7 +116,7 @@ function handleInput ( dirButton )
 end
 
 
-
+--[[
 local ProtoAnimation = {}
 
 ProtoAnimation.new = function (time)
@@ -122,7 +132,7 @@ ProtoAnimation.new = function (time)
 
     return self
 end
-
+--]]
 
 
 function doAttackAnimation (hitpoint)
@@ -133,34 +143,10 @@ end
 
 
 
+
+
+
 --------------------------------------------------------------------------------
-
-
-function addMessage (string)
-    logText = logText .. "\n" ..  string
-    logMsgCounter = logMsgCounter + 1
-    if logMsgCounter > 16 then
-        --messagesText:clear()
-        logMsgCounter = 0
-        logText = string
-    end
-
-    messagesText:set ( logText )
-
-end
-
-function addFeedback (string)
-    feedbackMsgCounter = feedbackMsgCounter + 1
-    if feedbackMsgCounter > 14 then
-        feedbackMsgCounter = 0
-        feedbackLog = round(currentTime, 1) ..": ".. string
-    else
-        feedbackLog = feedbackLog .. "\n" ..  round(currentTime, 1) ..": ".. string
-    end
-
-    feedbackText:set ( feedbackLog )
-
-end
 
 
 --------------------------------------------------------------------------------
@@ -187,80 +173,42 @@ function love.load()
     player = ProtoPlayer.new()
     enemy = ProtoEnemy.new()
     knife = ProtoKnife.new(389,150)
+    controller = ControllerInput.new( (love.joystick.getJoysticks())[1] )
+    inputQ = InputQueue.new()
 
 
 end
 
 --------------------------------------------------------------------------------
 
-local connectedJoysticks = love.joystick.getJoysticks()
-local activeJoystick = connectedJoysticks[1]
-local axisdirX = 0
-local axisdirY = 0
-
-local joyDirThreshold = 0.5
-local joyR = false
-local joyL = false
-local joyU = false
-local joyD = false
-
-local joystickInput = 5
-local joystickInputHistory = ""
-local joyN = false
-
-----------------------------------------
 
 function love.keyreleased(key)
 
     if key == '`' then
         debug.debug()
-    else
-        kbReleased = key
-    end
-
-
-    if key == '7' then
-        player.handleInput( "press_grab" )
-    end
-    if key == '8' then
-        player.handleInput( "press_attack" )
-    end
-    if key == '9' then
-        player.handleInput( "release_attack" )
-    end
-    if key == '0' then
-        player.handleInput( "release_grab" )
     end
 end
 
 
 
-local currentbutton = "none"
-local lastbutton = "none"
-local lastpadaxis = "none"
 
 function love.gamepadpressed(joystick, button)
-    lastbutton = button
-    currentbutton = button
 
+    controller.updateButton(button, true)
 
-    if joystickInput == 5 then
-        handleInput (button)
-        addMessage (button)
-    else
-        handleInput (joystickInput .. button)
-        addMessage(joystickInput .. button)
-    end
-    --table.insert (currentbuttons, button)
-
+    handleInput (controller.inputState.leftjoy ,  controller.activebutton)
+    --addMessage (controller.inputState.leftjoy .. controller.activebutton)
 
 end
 
 function love.gamepadreleased( joystick, button )
-    if button == currentbutton then
-        currentbutton = "none"
-    end
+
+    controller.updateButton(button, false)
+
+    handleInput(5, button .. "released" )
+
 end
+
 
 
 --------------------------------------------------------------------------------
@@ -274,11 +222,20 @@ function love.update(dt)
     currentTime = love.timer.getTime() - start
 
 
+
 --------------------------------------------
     enemy.tick(dt)
 
-    player.tick(dt)
+    ignoreAllInputs = player.tick(dt)
 
+    controller.tick()
+
+
+--------------------------------------------
+
+
+
+--[[
     if activeAnimation[1] ~= nil then
 
         ignoreAllInputs = true
@@ -290,60 +247,9 @@ function love.update(dt)
     else
         ignoreAllInputs = false
     end
---------------------------------------------
+--]]
 
-
-    axisdirX = activeJoystick:getAxis(1)
-    axisdirY = activeJoystick:getAxis(2)
-
-    axisdirXabs = math.abs(axisdirX)
-    axisdirYabs = math.abs(axisdirY)
-
-    axisCombinedAmp = axisdirXabs + axisdirYabs
-
-    if axisdirXabs > .8 or axisdirYabs > .8 or axisCombinedAmp > 1.3 or axisCombinedAmp < .3  then
-
-        joystickPrevInput = joystickInput
-
-        joyN = false
-
-        joyR = false
-        joyL = false
-        joyU = false
-        joyD = false
-
-        joyR = axisdirX > joyDirThreshold
-        joyL = axisdirX < -joyDirThreshold
-        joyU = axisdirY < -joyDirThreshold
-        joyD = axisdirY > joyDirThreshold
-
-        if joyR then
-            if joyU then
-                joystickInput = 9
-            elseif joyD then
-                joystickInput = 3
-            else
-                joystickInput = 6
-            end
-        elseif joyL then
-            if joyU then
-                joystickInput = 7
-            elseif joyD then
-                joystickInput = 1
-            else
-                joystickInput = 4
-            end
-        else
-            if joyU then
-                joystickInput = 8
-            elseif joyD then
-                joystickInput = 2
-            else
-                joystickInput = 5
-                joyN = true
-            end
-        end
-
+    --[[
 
         if joyN and joystickPrevInput ~= 5 then
             addMessage(joystickInputHistory)
@@ -353,20 +259,15 @@ function love.update(dt)
             joystickInputHistory = joystickInputHistory .. joystickInput
         end
 
-    end
-
-
-
-
-
-
-
-
+end
+--]]
 
 
 ----------------------------------------------
 
-inputText:set ( "button: "..currentbutton.."\njoy in: "..joystickInput )
+--inputText:set ( "button: "..currentbutton.."\njoy in: "..joystickInput.."\naxisX: "..axisdirX.."\naxisY: "..axisdirY )
+--inputText:set ( "button: "..currentbutton.."\njoy in: "..joystickInput.."\n        LT: "..axisdirLT.."\n        RT: "..axisdirRT )
+inputText:set ( "button: ".. controller.activebutton .."\njoy in: ".. controller.inputState.leftjoy)
 
 enemyStatusText:set ( "Blood: ".. round(enemy.bloodCurrent,3) .. " L\nBleed: " .. enemy.bleedRate .. " L/s\nStunT: " .. enemy.stunRemaining )
 

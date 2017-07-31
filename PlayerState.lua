@@ -7,6 +7,7 @@ IdleState.new = function (player)
 
     self.name = "idle"
     self.player = player
+    self.ignoreInput = false
 
     self.enter = function ()
         --do stuff when entering this state
@@ -23,6 +24,7 @@ IdleState.new = function (player)
 
     self.tick = function (dt)
 
+        return self.ignoreInput
     end
 
 
@@ -38,6 +40,7 @@ GrabState.new = function (player)
 
     self.name = "grab"
     self.player = player
+    self.ignoreInput = false
 
     self.enter = function ()
         --do stuff when entering this state
@@ -56,6 +59,7 @@ GrabState.new = function (player)
 
     self.tick = function (dt)
         -- grabidle
+        return self.ignoreInput
     end
 
 
@@ -73,7 +77,7 @@ AttackStartupState.new = function (player)
     self.player = player
 
     self.time = 1
-    self.isDone = false
+    self.ignoreInput = true
 
     self.enter = function ()
         addMessage ("Entered state: AttackStartup")
@@ -101,6 +105,7 @@ AttackStartupState.new = function (player)
             self.time = self.time - dt
         end
 
+        return self.ignoreInput
     end
 
 
@@ -118,7 +123,7 @@ AttackWindowState.new = function (player)
     self.player = player
 
     self.time = 1
-    self.isDone = false
+    self.ignoreInput = false
 
     self.enter = function ()
         addMessage ("Entered state: AttackWindow")
@@ -138,6 +143,8 @@ AttackWindowState.new = function (player)
     end
 
     self.tick = function (dt)
+
+        return self.ignoreInput
     end
 
 
@@ -155,7 +162,7 @@ AttackRecoveryState.new = function (player)
     self.player = player
 
     self.time = 0.5
-    self.isDone = false
+    self.ignoreInput = true
 
     self.enter = function ()
         addMessage ("Entered state: AttackRecovery")
@@ -181,6 +188,8 @@ AttackRecoveryState.new = function (player)
         else
             self.time = self.time - dt
         end
+
+        return self.ignoreInput
     end
 
 
